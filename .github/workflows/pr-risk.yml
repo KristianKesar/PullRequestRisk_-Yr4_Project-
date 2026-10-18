@@ -1,0 +1,76 @@
+# =====================================================================
+# PR Risk Predictor - GitHub integration
+# Kristian Kesar, C00296348
+#
+# Iteration 1 building block: hooks the project into GitHub so every
+# pull request gets checked and a comment is posted back on it.
+#
+# Flow:
+#   1. A PR is opened or updated -> this workflow runs
+#   2. Collect the Python files the PR changed
+#   3. Run them through ruff (stand-in for the risk model for now)
+#   4. Post the results as a PR comment via the GitHub API
+#
+# Later iterations replace the ruff step with the trained model so the
+# comment shows a risk score and the reasons behind it.
+# =====================================================================
+
+name: PR Risk
+
+# Hook: run on new PRs, new commits pushed to a PR, and reopened PRs
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Keep the token's access minimal: read the code, write PR comments
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  risk:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pull down the repo with full history so the PR branch can be
+      # compared against the base branch
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ruff is a placeholder until the model is ready
+      - name: Install linter
+        run: pip install ruff
+
+      # List only the .py files changed in this PR and lint them.
+      # "|| true" so lint errors don't fail the job before the comment posts.
+      - name: Lint changed files
+        run: |
+          git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.py' > changed.txt
+          echo "Changed Python files:"
+          cat changed.txt
+          xargs -r ruff check --output-format=concise < changed.txt > lint.txt || true
+
+      # Build the comment and post it through the GitHub API
+      # (gh pr comment -> POST /repos/{owner}/{repo}/issues/{number}/comments)
+      - name: Comment on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "## PR Risk Predictor is integrated" > comment.md
+          echo "" >> comment.md
+
+          if [ -s lint.txt ]; then
+            echo "Lint findings (placeholder for risk score):" >> comment.md
+            echo '```' >> comment.md
+            tail -n 30 lint.txt >> comment.md   # cap length of the comment
+            echo '```' >> comment.md
+          else
+            echo "No lint issues found in changed Python files." >> comment.md
+          fi
+
+          gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md
+
+# Note: PRs from forks only get a read-only token, so commenting fails
+# for them. Testing is done with branches inside this repo.
