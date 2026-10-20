@@ -1,30 +1,22 @@
-# .gitignore - Kristian Kesar, C00296348
-
-# Python build and cache files
+# python junk
 __pycache__/
 *.pyc
 *.egg-info/
 build/
-dist/
 .pytest_cache/
 .ruff_cache/
 
-# Virtual environments
+# virtual environment
 .venv/
 venv/
 
-# Datasets and trained models are large and can be rebuilt,
-# so they stay out of git (see data/README.md)
+# dataset + trained models are too big for git, can just redownload/retrain
 data/raw/
 data/processed/
 models/*
 !models/.gitkeep
 
-# Notebook checkpoints
-.ipynb_checkpoints/
-
-# Editor / OS files
+# editor stuff
 .vscode/
 .idea/
 .DS_Store
-Thumbs.db

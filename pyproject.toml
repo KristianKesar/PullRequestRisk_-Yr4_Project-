@@ -1,6 +1,4 @@
-# pyproject.toml
-# Kristian Kesar, C00296348
-# Project metadata and dependencies for the PR Risk Predictor.
+# project settings + what needs installing
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -8,18 +6,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pr-risk-predictor"
-version = "0.1.0"
+version = "0.2.0"
 description = "Scores GitHub pull requests for defect risk and explains why"
 authors = [{ name = "Kristian Kesar" }]
 requires-python = ">=3.10"
-dependencies = []          # model libraries (pandas, scikit-learn, shap) added in later iterations
+dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+# extra stuff for training + testing, install with: pip install -e ".[dev]"
+dev = ["pytest", "ruff", "pandas>=2.0", "scikit-learn>=1.3"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]       # lets tests import pr_risk without installing
+pythonpath = ["src"]   # so the tests can find the code
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
