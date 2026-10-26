@@ -3,7 +3,13 @@
 # builds the comment that gets posted on the PR (github markdown).
 # for now it just shows the features + a few simple warnings.
 # once the model's trained the risk score + reasons go in here too
+#
+# NEW - also makes the per-file warnings that show up as yellow boxes
+# right next to the code in the PR's "Files changed" tab
 
+import re
+
+from .features import is_source_file, is_test_file
 from .github_client import COMMENT_MARKER
 
 # rough limits for the warnings, just placeholders til the model does it properly.
@@ -12,6 +18,10 @@ from .github_client import COMMENT_MARKER
 LARGE_CHURN = 400
 MANY_FILES = 10
 MANY_SUBSYSTEMS = 3
+BIG_FILE_CHURN = 200   # NEW - one single file changing this much is worth a look
+
+# github only shows 10 warnings per step, so no point making more than that
+MAX_FILE_WARNINGS = 10
 
 # feature name -> what it says in the table, in this order
 FEATURE_LABELS = [
@@ -69,3 +79,50 @@ def format_comment(f):
               "_Iteration 1 build: risk score from the trained model coming soon._"]
 
     return "\n".join(lines)
+
+
+# ---- NEW: per-file warnings ------------------------------------------
+
+def first_changed_line(file):
+    # github gives each file a "patch" (the diff). the first bit looks like
+    # "@@ -10,4 +12,7 @@" and the number after + is where the new code starts.
+    # we stick the warning on that line so it shows up right next to the change
+    match = re.search(r"\+(\d+)", file.get("patch") or "")
+    return int(match.group(1)) if match else 1
+
+
+def file_warnings(changed_files):
+    # goes through each file and works out what to warn about.
+    # gives back a list of (filename, line, message)
+    any_tests = any(is_test_file(f["filename"]) for f in changed_files)
+    warnings = []
+
+    for f in changed_files:
+        name = f["filename"]
+        if f.get("status") == "removed":
+            continue   # cant put a warning on a file that's gone
+        if is_test_file(name) or not is_source_file(name):
+            continue   # only warn about actual code
+
+        churn = f.get("additions", 0) + f.get("deletions", 0)
+        messages = []
+        if churn >= BIG_FILE_CHURN:
+            messages.append(f"{churn} lines changed in this file, worth a careful review.")
+        if not any_tests:
+            messages.append("Code changed here but no tests were updated in this PR.")
+
+        if messages:
+            warnings.append((churn, name, first_changed_line(f), " ".join(messages)))
+
+    # biggest changes first, then cut it down to what github will show
+    warnings.sort(reverse=True)
+    return [(name, line, msg) for churn, name, line, msg in warnings[:MAX_FILE_WARNINGS]]
+
+
+def annotation(filename, line, message):
+    # github actions turns lines printed like this into the yellow warning boxes:
+    #   ::warning file=src/a.py,line=12,title=PR Risk::the message
+    # some characters have to be swapped out or github gets confused
+    message = message.replace("%", "%25").replace("\n", "%0A")
+    filename = filename.replace("%", "%25").replace(",", "%2C").replace(":", "%3A")
+    return f"::warning file={filename},line={line},title=PR Risk::{message}"

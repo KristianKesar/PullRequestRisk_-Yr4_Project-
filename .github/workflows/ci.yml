@@ -1,0 +1,34 @@
+# ci.yml - Kristian Kesar, C00296348
+#
+# runs the linter + all the tests every time i push or open a PR.
+# shows up as a green tick or red cross on github, so if i break
+# something i find out before it gets merged into main
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # my project + the dev stuff (pytest, ruff, pandas)
+      - run: pip install ".[dev]"
+
+      - name: Lint
+        run: ruff check src tests scripts
+
+      - name: Tests
+        run: python -m pytest -v

@@ -3,6 +3,7 @@
 # runs my own code on every PR now instead of the linter:
 #   PR opened/updated -> pr-risk grabs the changed files from github
 #   -> works out the features -> posts (or updates) a comment on the PR
+#   -> NEW: puts yellow warning boxes next to risky files in "Files changed"
 #
 # the model's risk score gets added to the comment later on
 
@@ -30,10 +31,11 @@ jobs:
       # installs my project, which gives the pr-risk command
       - run: pip install .
 
+      # --annotate is the NEW bit that makes the warnings show next to the code
       - name: Look at the PR and comment
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: pr-risk comment --repo "${{ github.repository }}" --pr "${{ github.event.pull_request.number }}"
+        run: pr-risk comment --repo "${{ github.repository }}" --pr "${{ github.event.pull_request.number }}" --annotate
 
 # heads up: PRs from forks only get a read only token so commenting fails on those,
 # so test with branches in this repo

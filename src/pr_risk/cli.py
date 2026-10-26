@@ -6,6 +6,9 @@
 #   pr-risk comment --repo owner/name --pr 12 --dry-run  -> same but just prints it, doesnt post
 #   pr-risk features some_files.json                     -> test it on a saved file, no github needed
 #
+# NEW - add --annotate to either one to also print the per-file warnings.
+# inside github actions those turn into yellow boxes next to the code
+#
 # the github token comes from the GITHUB_TOKEN environment variable
 
 import argparse
@@ -14,7 +17,13 @@ import os
 
 from .features import extract_features
 from .github_client import GitHubClient, GitHubError
-from .report import format_comment
+from .report import annotation, file_warnings, format_comment
+
+
+def print_annotations(files):
+    # NEW - one line per warning, github actions picks these up automatically
+    for name, line, message in file_warnings(files):
+        print(annotation(name, line, message))
 
 
 def run_comment(args):
@@ -32,6 +41,8 @@ def run_comment(args):
         else:
             client.upsert_comment(args.pr, body)
             print(f"commented on PR #{args.pr} ({len(files)} files looked at)")
+        if args.annotate:
+            print_annotations(files)
     except GitHubError as e:
         print(f"github error: {e}")
         return 1
@@ -46,6 +57,8 @@ def run_features(args):
         print(format_comment(feats))   # show what the PR comment would look like
     else:
         print(json.dumps(feats.to_dict(), indent=2))
+    if args.annotate:
+        print_annotations(files)
     return 0
 
 
@@ -57,11 +70,13 @@ def main(argv=None):
     c.add_argument("--repo", required=True, help="owner/name")
     c.add_argument("--pr", required=True, type=int, help="PR number")
     c.add_argument("--dry-run", action="store_true", help="print it instead of posting")
+    c.add_argument("--annotate", action="store_true", help="print per-file warnings too")
     c.set_defaults(run=run_comment)
 
     f = commands.add_parser("features", help="get features from a json file of changed files")
     f.add_argument("json_file")
     f.add_argument("--markdown", action="store_true", help="show the PR comment instead")
+    f.add_argument("--annotate", action="store_true", help="print per-file warnings too")
     f.set_defaults(run=run_features)
 
     args = parser.parse_args(argv)
