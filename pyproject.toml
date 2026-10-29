@@ -14,7 +14,7 @@ dependencies = []
 
 [project.optional-dependencies]
 # extra stuff for training + testing, install with: pip install -e ".[dev]"
-dev = ["pytest", "ruff", "pandas>=2.0", "scikit-learn>=1.3"]
+dev = ["pytest", "ruff", "pandas>=2.0", "scikit-learn>=1.3", "matplotlib"]
 
 # NEW - makes the `pr-risk` command work after installing
 [project.scripts]
