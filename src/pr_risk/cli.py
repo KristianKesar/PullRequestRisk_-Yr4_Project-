@@ -8,8 +8,7 @@
 #
 # NEW - add --annotate to either one to also print the per-file warnings.
 # inside github actions those turn into yellow boxes next to the code
-#
-# the github token comes from the GITHUB_TOKEN environment variable
+
 
 import argparse
 import json
